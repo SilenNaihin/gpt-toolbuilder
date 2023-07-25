@@ -1,0 +1,21 @@
+[tool.poetry]
+name = "gpt-toolbuilder"
+version = "0.1.0"
+description = ""
+authors = ["Silen Naihin <silen.naihin@gmail.com>"]
+readme = "README.md"
+packages = [{include = "gpt_toolbuilder"}]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+python-dotenv = "^1.0.0"
+click = "^8.1.6"
+openai = "^0.27.8"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.scripts]
+tbuild = "gpt_toolbuilder.main:main"
