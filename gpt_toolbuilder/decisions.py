@@ -1,7 +1,7 @@
 from gpt_toolbuilder.Tool import Tool
 
 
-def tool_init(task: str, expanded_task: str):
+def tool_init(task: str, expanded_task: str, interpreter: list[str]) -> Tool:
     tool_prompt = f"{task} \n_____________\n {expanded_task}"
     # similar_tools = self.element.memory.query([tool_prompt])
 
@@ -12,7 +12,7 @@ def tool_init(task: str, expanded_task: str):
     #     else: # query retrieval set to above 80
     #         tool = Ion.merge_tools(similar_tools, tool_prompt)
     # else:
-    return Tool.create_tool(tool_prompt)
+    return Tool.create_tool(tool_prompt, interpreter)
 
 
 def verify_tool(tool: Tool):

@@ -1,8 +1,10 @@
 import click
-from typing import Callable, Optional
+from typing import Optional
 from pathlib import Path
 import os
 from dotenv import load_dotenv
+
+from gpt_toolbuilder.utils.types import InterpreterTypes
 
 load_dotenv()
 
@@ -46,6 +48,7 @@ def tbuild(
     fail_condition: Optional[int] = 5,
     mock_input: str = "\n",
     template: Templates = Templates.DEFAULT,
+    interpreter: list[str] = ["python", "shell"],
 ):
     """Your main function for task execution."""
     logger = Logger()

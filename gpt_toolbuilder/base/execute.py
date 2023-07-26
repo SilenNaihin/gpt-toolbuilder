@@ -1,7 +1,12 @@
 import subprocess
+from typing import Optional
+
+from gpt_toolbuilder.utils.Logger import Logger
+
+logger = Logger()
 
 
-def execute_shell_command(self, command: str, timeout: int = 10):
+def execute_shell_command(command: str, timeout: int = 10) -> str:
     try:
         output = subprocess.check_output(
             command,
@@ -12,16 +17,18 @@ def execute_shell_command(self, command: str, timeout: int = 10):
         )
         return output.strip()
     except subprocess.CalledProcessError as e:
-        return self.logger.debug("Error: ", f"{e.output.strip()}")
+        logger.debug("Error: ", f"{e.output.strip()}")
+        return e.output.strip()
 
 
-def execute_python_script(self, function_string: str, timeout: int = 10):
+def execute_python_script(function_string: str, timeout: int = 10) -> str:
     local_scope = {}
     try:
         # Use exec to execute the function_string.
         exec(function_string, {}, local_scope)
     except Exception as e:
-        self.logger.debug("Error executing function: ", f"{e}")
+        logger.debug("Error executing function: ", f"{e}")
 
     # The function's return value will be in the local scope with the key '_return'.
-    return local_scope.get("_return")
+    return_val = local_scope.get("_return")
+    return return_val if return_val is not None else "Error: Return value is None"

@@ -6,11 +6,6 @@ from typing import Literal, Optional, TypedDict, Any
 MessageRole = Literal["system", "user", "assistant", "function"]
 
 
-class InterpreterTypes(Enum):
-    PYTHON = "python"
-    BASH = "bash"
-
-
 class ToolSections(Enum):
     BROWSING = "browsing"
     API = "api"

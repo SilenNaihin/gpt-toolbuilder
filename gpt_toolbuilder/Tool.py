@@ -13,7 +13,8 @@ from .prompts.get import (
 from .context import generate_title, summarize_tool_use
 from gpt_toolbuilder.base.Environment import LinuxEnvironment
 from gpt_toolbuilder.utils.Logger import Logger
-from gpt_toolbuilder.utils.types import InterpreterTypes, ToolSections
+from gpt_toolbuilder.utils.types import ToolSections
+from gpt_toolbuilder.base.execute import execute_shell_command, execute_python_script
 
 load_dotenv()
 BASIC_MODEL = os.environ.get("BASIC_MODEL") or "gpt-3.5-turbo"
@@ -24,17 +25,17 @@ class Tool:
         self,
         title: str,
         command: str,
-        interpreter: InterpreterTypes = InterpreterTypes.BASH,
+        interpreter: list[str],
         description: str = "",
         tasks: list[str] = [],
     ):
         self.id = id(self)
-        self.title: str = title
+        self.title = title
         self.description: str = (
             description  # TODO: vectorized in Element when Tool works
         )
-        self.interpreter: InterpreterTypes = interpreter
-        self.command: str = command  # completion/function, shell
+        self.interpreter = interpreter
+        self.command = command  # completion/function, shell
         self.tasks: list[str] = tasks
         self.errors: list = []
         self.environment = LinuxEnvironment()
@@ -47,21 +48,20 @@ class Tool:
         self.results: list[str] = []
 
     def __call__(self, task: str) -> Tuple[bool, str]:
-        result = ""
+        result: str | None = ""
         error = False
 
         self.logger.debug("Using tool:", self.interpreter)
-        self.logger.debug("Using bash:", InterpreterTypes.BASH)
 
-        if self.interpreter == InterpreterTypes.BASH:
+        if "bash" in self.interpreter:
             try:
-                result = self.environment.execute_shell_command(self.command)
+                result = execute_shell_command(self.command)
             except Exception as e:
                 error = True
                 self.logger.dev("Error:", f"{e}")
-        elif self.interpreter == InterpreterTypes.PYTHON:
+        elif "python" in self.interpreter:
             try:
-                result = self.environment.execute_python_script(self.command)
+                result = execute_python_script(self.command)
             except Exception as e:
                 error = True
                 self.logger.dev("Error:", f"{e}")
@@ -82,14 +82,17 @@ class Tool:
         pass
 
     @staticmethod
-    def create_tool(task: str) -> "Tool":
+    def create_tool(task: str, interpreter: list[str]) -> "Tool":
         # make it so that the fundamental building blocks are:
         # 1. shell commands
         # TODO: 2. python functions (file creation template?)
         # TODO: 3. create chat completion
         # maybe api calls from a given lib for guidance
         unix_command_msg = Message("system", command_generation_prompt(task))
-        response = create_chat_completion([unix_command_msg])  # create title with 3.5
+        response = create_chat_completion(
+            messages=[unix_command_msg.raw()], model=COMPLEX_MODEL, temperature=0.2
+        )
+
         task_command = json.loads(response)
         # tool_func = parse_response(response) # TODO: parse created function (black, linter, etc)
 
@@ -98,11 +101,14 @@ class Tool:
         title = generate_title(f"{task}\n{task_command}")
 
         Logger().dev("Tool generated title: ", title)
-        return Tool(title, task_command)
+        return Tool(title, task_command, interpreter)
 
     def fail_reason(self) -> str:
         fail_summary_msg = Message("system", error_summary_prompt(self.errors))
-        return create_chat_completion([fail_summary_msg])
+        response = create_chat_completion(
+            messages=[fail_summary_msg.raw()], model=COMPLEX_MODEL, temperature=0.2
+        )
+        return response.message.content
 
     @staticmethod
     def merge_tools(*args) -> "Tool":
