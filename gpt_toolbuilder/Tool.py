@@ -1,17 +1,17 @@
 # can use this class to create tools
 
-from typing import Callable, Any, Tuple
+from typing import Tuple
 import json
 import os
 from dotenv import load_dotenv
-from aitemplates import create_chat_completion, Message
+from utils.types import Message
+from utils.chat_completion import create_chat_completion
 from .prompts.get import (
-    command_results_summary_prompt,
     command_generation_prompt,
     error_summary_prompt,
 )
-from .prompts.prompts import TITLE_PROMPT
-from gpt_toolbuilder.Environment import LinuxEnvironment
+from .context import generate_title, summarize_tool_use
+from gpt_toolbuilder.base.Environment import LinuxEnvironment
 from gpt_toolbuilder.utils.Logger import Logger
 from gpt_toolbuilder.utils.types import InterpreterTypes, ToolSections
 
@@ -24,7 +24,6 @@ class Tool:
         self,
         title: str,
         command: str,
-        environment: LinuxEnvironment,
         interpreter: InterpreterTypes = InterpreterTypes.BASH,
         description: str = "",
         tasks: list[str] = [],
@@ -38,7 +37,7 @@ class Tool:
         self.command: str = command  # completion/function, shell
         self.tasks: list[str] = tasks
         self.errors: list = []
-        self.environment: LinuxEnvironment = environment
+        self.environment = LinuxEnvironment()
         self.logger: Logger = Logger()
         # TODO: this doesn't do anything rn
         self.section: ToolSections = ToolSections.GENERIC
@@ -71,7 +70,7 @@ class Tool:
             raise NotImplementedError(
                 "Interpreter type not supported. Currently only linux commands like bash are supported"
             )
-        summarization: str = self.summarize_tool_use(task, result)
+        summarization: str = summarize_tool_use(task, result)
         self.raw_results.append(result)
         self.results.append(summarization)
         return error, summarization
@@ -83,7 +82,7 @@ class Tool:
         pass
 
     @staticmethod
-    def create_tool(task: str, env: LinuxEnvironment) -> "Tool":
+    def create_tool(task: str) -> "Tool":
         # make it so that the fundamental building blocks are:
         # 1. shell commands
         # TODO: 2. python functions (file creation template?)
@@ -96,10 +95,10 @@ class Tool:
 
         Logger().dev("Tool creation command json: ", task_command)
 
-        title = Tool.generate_title(f"{task}\n{task_command}")
+        title = generate_title(f"{task}\n{task_command}")
 
         Logger().dev("Tool generated title: ", title)
-        return Tool(title, task_command, env)
+        return Tool(title, task_command)
 
     def fail_reason(self) -> str:
         fail_summary_msg = Message("system", error_summary_prompt(self.errors))
@@ -119,51 +118,3 @@ class Tool:
         #     "",
         #     tool_func,
         # )
-
-    @staticmethod
-    def generate_title(context) -> str:
-        title_msg = Message("system", TITLE_PROMPT)
-        context_msg = Message("system", context)
-        return create_chat_completion([title_msg, context_msg], model=BASIC_MODEL)
-
-    def test_tool(self):
-        pass
-
-    def add_desc(self, description: str) -> None:
-        self.description = description
-
-    def summarize_tool_use(self, task: str, result: str) -> str:
-        cutoff = 300
-
-        if (
-            len(result) <= cutoff
-        ):  # this needs to be easily used as context which is why its this low
-            return result
-
-        chunk_size = 4096
-
-        chunk_summaries = list()
-        for i in range(len(result) // chunk_size):
-            chunk = result[i : i * chunk_size]
-            if not chunk:
-                break
-            summary = create_chat_completion(
-                Message("system", command_results_summary_prompt(task, chunk)),
-                model=BASIC_MODEL,
-            )
-            chunk_summaries.append(summary[:cutoff])
-
-        if len(chunk_summaries) == 1:
-            return chunk_summaries[0]
-
-        summary = create_chat_completion(
-            Message(
-                "system",
-                command_results_summary_prompt(task, "\n".join(chunk_summaries))[
-                    :cutoff
-                ],
-            ),
-            model=BASIC_MODEL,
-        )
-
-        return summary
