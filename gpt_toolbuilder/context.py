@@ -2,6 +2,7 @@ from .prompts.prompts import TITLE_PROMPT
 from utils.types import Message
 from utils.chat_completion import create_chat_completion
 from .prompts.get import command_results_summary_prompt
+from gpt_toolbuilder.main import BASIC_MODEL
 
 
 def generate_title(context) -> str:

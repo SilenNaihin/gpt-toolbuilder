@@ -4,21 +4,19 @@ from pathlib import Path
 import os
 from dotenv import load_dotenv
 
-from gpt_toolbuilder.utils.types import InterpreterTypes
-
 load_dotenv()
 
 REPORT_LOCATION = os.getenv("REPORT_LOCATION")
 REPORT_LOCATION = (
     Path(REPORT_LOCATION).resolve() if REPORT_LOCATION else Path.cwd() / "reports"
 )
+BASIC_MODEL = os.environ.get("BASIC_MODEL") or "gpt-3.5-turbo"
+COMPLEX_MODEL = os.environ.get("COMPLEX_MODEL") or "gpt-4"
 
 
 from gpt_toolbuilder.Tool import Tool
 from gpt_toolbuilder.utils.Logger import Logger, ColorCode
-from gpt_toolbuilder.utils.utils import expand_task
-from gpt_toolbuilder.decisions import tool_init, verify_tool
-from gpt_toolbuilder.actions import Templates
+from gpt_toolbuilder.actions import Templates, Actions, Loop
 from gpt_toolbuilder.db.db import Database as Db
 from gpt_toolbuilder.base.Input import ask_user_feedback
 
@@ -56,9 +54,16 @@ def tbuild(
     Db().initialize(REPORT_LOCATION)
 
     for action in template.value:
-        print(action)
+        if isinstance(Actions, action):
+            # execute action
+            pass
+        elif isinstance(Loop, action):
+            tool_fail_count = 0
+            while fail_condition != tool_fail_count:
+                # execute action
+                pass
 
-    expanded_task = expand_task(task)
+    ## NEED TO ADAPAT TO ACTIONS
 
     # tool_prompt = # TODO: task -> tool `write hello to a file` -> `write file tool`
 
@@ -66,7 +71,7 @@ def tbuild(
     new_tool = True
     tool: Tool
     while fail_condition != tool_fail_count:
-        tool = tool_init(task, expanded_task)
+        tool = tool_init(task, expanded_task, interpreter)
         verify = verify_tool(tool)
 
     # maybe a prompt that automatically calls on of these functions?
@@ -74,21 +79,25 @@ def tbuild(
     output_summary = None
     try:
         # test_tool(tool) # predefined unit tests or automatically created ones
-        output_summary = tool(expanded_task)  # use the tool and get summary of output
+        # use the tool and get summary of output
+        error, summary = tool(expanded_task)  # type: ignore
 
-        logger.dev(
-            "Summary of tool usage output: ",
-            f"error: {output_summary[0]}, summary: {output_summary[1]}",
-        )
+        if not error:
+            logger.dev(
+                "Summary of tool usage output: ",
+                summary,
+            )
 
-        # task_pair = self.element.memory.add("task", [tool_prompt], metadata={"tool": tool.id})
+        # memorize()
+
+        # memory.add("task", [tool_prompt], metadata={"tool": tool.id})
 
         # if made it here it's a success
         # if new_tool:
         #     tool.add_desc()
-        # tool_pair = self.element.memory.add("tool", [tool.name + tool.description + tool.errors], metadata={"tasks": [task.id for task in tool.tasks], "tool": tool.id})
+        # tool_pair = memory.add("tool", [tool.name + tool.description + tool.errors], metadata={"tasks": [task.id for task in tool.tasks], "tool": tool.id})
         # else:
-        # tool_pair = self.element.memory.update("tool", where={"tool": tool.id}, metadata={"tasks": [task.id for task in tool.tasks]})
+        # tool_pair = memory.update("tool", where={"tool": tool.id}, metadata={"tasks": [task.id for task in tool.tasks]})
 
         # if no error, maybe was the task done correctly prompt?
         # maybe we predict what the env will look like next and if it doesn't match it's a failure/not a success?

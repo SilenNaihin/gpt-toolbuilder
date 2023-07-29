@@ -1,6 +1,12 @@
+import json
+
 from .prompts import EXPAND_PROMPT
 from gpt_toolbuilder.utils.types import Message
 from gpt_toolbuilder.utils.chat_completion import create_chat_completion
+from gpt_toolbuilder.utils.Logger import Logger
+from gpt_toolbuilder.main import BASIC_MODEL
+
+logger = Logger()
 
 
 def list_to_num_string(lst: list) -> str:
@@ -20,8 +26,22 @@ def expand_task(task: str) -> str:
 
     response = create_chat_completion(
         messages=[expanded_prompt.raw(), description_prompt.raw()],
-        model="gpt-3.5-turbo",
+        model=BASIC_MODEL,
         temperature=0.7,
     )
 
     return response.message.content
+
+
+def load_completion_json(json_str: str, format_examples: str) -> dict:
+    try:
+        json_obj = json.loads(json_str)
+    except Exception as e:
+        logger.dev("Json failed to load, retrying", e)
+        json_msg = Message("system", format_json_prompt(json_str, format_examples))
+        response = create_chat_completion(
+            messages=[json_msg.raw()], model=BASIC_MODEL, temperature=0
+        )
+        json_obj = json.loads(response.message.content)
+
+    return json_obj

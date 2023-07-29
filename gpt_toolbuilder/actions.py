@@ -1,30 +1,32 @@
 from enum import Enum
 from typing import Callable, Any
 
-from gpt_toolbuilder.base.execute import (
-    execute_shell_command,
-    execute_python_script,
-)
+from gpt_toolbuilder.base.execute import execute_command_or_script
 from gpt_toolbuilder.base.Input import ask_user_feedback
-
+from gpt_toolbuilder.utils.utils import expand_task
+from gpt_toolbuilder.decisions import tool_init, verify_tool
 
 FUNCTION_MAP = {
-    "shell": execute_shell_command,
-    "python": execute_python_script,
+    "execute": execute_command_or_script,
     "feedback": ask_user_feedback,
+    "expand": expand_task,
+    "develop_tool": tool_init,
+    "verify_tool": verify_tool,
+    "user_feedback": ask_user_feedback,
 }
 
 
 class Actions(Enum, str):
     """This is a single action in our tool building process."""
 
-    CLARIFY = "clarify"  # ask for clarification from assumptions
-    REFINE = "refine"  # refine a tool as it doesn't perform given task
-    REFLECT = "reflect"
-    DEVELOP = "develop"
-    VERIFY = "verify"
+    CLARIFY = "clarify"  # TODO: ask for clarification from assumptions
+    REFINE = "refine"  # TODO: refine a tool as it doesn't perform given task
+    REFLECT = "reflect"  # TODO
+    DEVELOP = "develop_tool"  # TODO: tool_init vs create_tool
+    VERIFY = "verify"  # TODO
     EXPAND = "expand"
-    FEEDBACK = "feedback"
+    FEEDBACK = "user_feedback"
+    EXECUTE = "execute"
 
     def get_step_function(self, step: str) -> Callable[[Any], Any]:
         function = FUNCTION_MAP.get(step)
@@ -35,7 +37,7 @@ class Actions(Enum, str):
 
 
 class Loop(Enum):
-    DEFAULT = [Actions.EXPAND]
+    DEFAULT = {}
 
 
 class Sequences(Enum):
@@ -51,5 +53,6 @@ class Sequences(Enum):
 class Templates(Enum):
     DEFAULT = [
         Actions.CLARIFY,
+        Actions.EXPAND,
         Loop.DEFAULT,
     ]
